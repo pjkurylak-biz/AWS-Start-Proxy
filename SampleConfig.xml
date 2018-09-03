@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<awssession>
+	<credentialProfileName>ProfileName</credentialProfileName>
+	<region>us-east-1</region>
+	<ec2Id>i-id</ec2Id>
+</awssession>
