@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+	This is a sample xml file, showing the structure. The actual XML
+	file should be named the same as the script, with a ".xml"
+	extension.
+ -->
 <awssession>
 	<credentialProfileName>ProfileName</credentialProfileName>
 	<region>us-east-1</region>
 	<ec2Id>i-id</ec2Id>
+	<remotePort>22</remotePort>
+	<localPort>8080</localPort>
+	<plinkPath>C:\Program Files (x86)\PuTTY\plink.exe</plinkPath>
+	<privateKeyPath>C:\Users\Username\Documents\SSH\PrivateKey.ppk</privateKeyPath>
+	<hostKey>00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f</hostKey>
 </awssession>
