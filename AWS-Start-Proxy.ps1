@@ -10,16 +10,19 @@
         Optional. Path to the XML configuration file that contains AWS information.
         If not supplied, assumed to be the same path as this script except with
         a ".xml" extension.
+    .REQUIREMENTS
+        AWSPowerShell module is installed
+        Plink (companion program to Putty) has been downloaded
+         https://www.chiark.greenend.org.uk/~sgtatham/putty/latest.html
+        An EC2 instance has been created to act as the proxy server
+        XML Configuration file has been created. See file 'SampleConfig.xml' for required information
     .AUTHOR
     PJ Kurylak
  #>
 
 Param(
     [Parameter(Mandatory=$False,Position=1)]
-    [string]$XMLPath,
-
-    [Parameter(Mandatory=$False)]
-    [string]$CreateXML
+    [string]$XMLPath
 )
 
 Set-StrictMode -Version 1
@@ -56,13 +59,13 @@ $privateKeyPath = $xmlConfig.awssession.privateKeyPath
 # Get the hostkey
 $hostKey = $xmlConfig.awssession.hostKey
 
-
-# Get the instance state. Start it if necessary. Timeout after 5 minutes
+# Get the instance state. Start the instance if it is stopped. 
+# Timeout if after 5 minutes it is not 'running'.
 $state = $(Get-EC2Instance -InstanceId $id).Instances.State.Name
 if (-Not $state ) {
     throw "An Error occurred. Could not get expected EC2 instance."
 }
-# Create a timer that 
+# Create a timer that will allow us to quit after a timeout
 $Timer = New-Object -TypeName System.Diagnostics.Stopwatch
 $Timer.Start()
 
@@ -91,7 +94,7 @@ While ($stateReported -ne "running" -and $Timer.Elapsed.TotalMinutes -lt 5) {
     $state = $(Get-EC2Instance -InstanceId $id).Instances.State.Name
 }
 # See if we timed out
-If ($(Get-EC2Instance -InstanceId $id).Instances.State.Name -ne "running") {
+If ($state -ne "running") {
     $Timer.Stop()
     throw "Timed out waiting for instance to start."
 }
@@ -122,6 +125,7 @@ $args = "-ssh" `
 #Start-Sleep -s 20
 # $connected tells us whether we have ever connected to this instance
 $connected = $False
+# Timeout trying to connect to instance after 2 minutes.
 $Timer.Start()
 while ( -not $connected -and $Timer.Elapsed.TotalSeconds -lt 120) {
     # Try to connect. If we get a non-zero exit, then assume that we tried to connect
@@ -131,10 +135,13 @@ while ( -not $connected -and $Timer.Elapsed.TotalSeconds -lt 120) {
     $process = (Start-Process -FilePath $plinkPath -ArgumentList $args -WindowStyle Minimized -Wait -PassThru)
     Write-Host "  Exit code: $($process.ExitCode)"
     if ( $process.ExitCode -eq 0 -or $process.ExitCode -eq -1073741510) {
+        # 0 is the preferred exit code
+        # in some cases, Plink doesn't close when the ssh session is exited and must be manually closed.
+        # In this case it will return '-1073741510' exit code.
         $connected = $True
         Write-Host "  Proxy connection closed."
     } else {
-        Write-Host "  Problem connecting to proxy."
+        Write-Host "  Problem connecting to proxy. Proxy is probably not ready. Retry..."
         Start-Sleep -s 5
     }
 }
@@ -147,4 +154,4 @@ if ( -not $connected ) {
 Write-Host "Stopping proxy server."
 Stop-EC2Instance -InstanceId $id >$null
 $state = $(Get-EC2Instance -InstanceId $id).Instances.State.Name
-Write-Host "Proxy server state is: $state"
+Write-Host "Proxy server state is: $state `nEnd of script"
